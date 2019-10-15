@@ -14,7 +14,7 @@ Github: https://github.com/chiachun2491/NachOS.git
 
 ### 1. 參考PrintInt()的執行架構，建立Sleep()執行架構
 + **`/code/userprog/exception.cc`**
-```cpp=
+```cpp
 case SC_Sleep:
 	val=kernel->machine->ReadRegister(4);
 	cout << "Sleep time:" <<val << "ms" << endl;
@@ -23,14 +23,14 @@ case SC_Sleep:
 ```
 
 + **`/code/userprog/syscall.h`**
-```cpp=
+```cpp
 #define SC_Sleep 12
 
 void Sleep(int number);
 ```
 
 + **`/code/test/start.s`**
-```mips=
+```assembly
 Sleep:
 	addiu   $2,$0,SC_Sleep
 	syscall
@@ -40,7 +40,7 @@ Sleep:
 
 ### 2. 撰寫`kernel->alarm->WaitUntil(time)`
 + `/code/threads/alarm.h`
-```cpp=
+```cpp
 #include "thread.h"
 #include <list>
 
@@ -67,7 +67,7 @@ private:
 ```
 
 + `/code/threads/alarm.cc`
-```cpp=
+```cpp
 void 
 Alarm::CallBack() 
 {
