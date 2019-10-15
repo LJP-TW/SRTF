@@ -172,5 +172,8 @@ SleepList::SleepThread::SleepThread(Thread *t, int wakeupTime)
 }
 ```
 
-### Screenshot
-![screenshot](https://i.imgur.com/oBYFONA.gif)
+
+### Screenshot [Link (gif)](https://i.imgur.com/Xv1tEZf.gif)
+![screenshot](https://i.imgur.com/Xv1tEZf.gif)
+
+
