@@ -30,6 +30,7 @@
 #define SC_ThreadFork	9
 #define SC_ThreadYield	10
 #define SC_PrintInt	11
+#define SC_Sleep    12
 
 #ifndef IN_ASM
 

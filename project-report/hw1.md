@@ -1,51 +1,73 @@
-// alarm.cc
-//	Routines to use a hardware timer device to provide a
-//	software alarm clock.  For now, we just provide time-slicing.
-//
-//	Not completely implemented.
-//
-// Copyright (c) 1992-1996 The Regents of the University of California.
-// All rights reserved.  See copyright.h for copyright notice and limitation 
-// of liability and disclaimer of warranty provisions.
+# HW1 - System call
 
-#include "copyright.h"
-#include "alarm.h"
-#include "main.h"
+## Work division
 
-//----------------------------------------------------------------------
-// Alarm::Alarm
-//      Initialize a software alarm clock.  Start up a timer device
-//
-//      "doRandom" -- if true, arrange for the hardware interrupts to 
-//		occur at random, instead of fixed, intervals.
-//----------------------------------------------------------------------
++ `撰寫報告` B10615013 李聿鎧
++ `研究系統` B10615024 李韋宗
++ `撰寫程式` B10615043 何嘉峻
+---
+## Source Code
+Github: https://github.com/chiachun2491/NachOS.git
 
-Alarm::Alarm(bool doRandom)
+---
+## Report
+
+### 1. 參考PrintInt()的執行架構，建立Sleep()執行架構
++ **`/code/userprog/exception.cc`**
+```cpp
+case SC_Sleep:
+	val=kernel->machine->ReadRegister(4);
+	cout << "Sleep time:" <<val << "ms" << endl;
+	kernel->alarm->WaitUntil(val);
+	return;
+```
+
++ **`/code/userprog/syscall.h`**
+```cpp
+#define SC_Sleep 12
+
+void Sleep(int number);
+```
+
++ **`/code/test/start.s`**
+```assembly
+Sleep:
+	addiu   $2,$0,SC_Sleep
+	syscall
+	j       $31
+	.end	Sleep
+```
+
+### 2. 撰寫`kernel->alarm->WaitUntil(time)`
++ `/code/threads/alarm.h`
+```cpp
+#include "thread.h"
+#include <list>
+
+class SleepList
 {
-    timer = new Timer(doRandom, this);
-}
+public:
+  SleepList();
+  void push_back(Thread *t, int wakeupTime);
+  bool checkWoken();
+  bool empty();
 
-//----------------------------------------------------------------------
-// Alarm::CallBack
-//	Software interrupt handler for the timer device. The timer device is
-//	set up to interrupt the CPU periodically (once every TimerTicks).
-//	This routine is called each time there is a timer interrupt,
-//	with interrupts disabled.
-//
-//	Note that instead of calling Yield() directly (which would
-//	suspend the interrupt handler, not the interrupted thread
-//	which is what we wanted to context switch), we set a flag
-//	so that once the interrupt handler is done, it will appear as 
-//	if the interrupted thread called Yield at the point it is 
-//	was interrupted.
-//
-//	For now, just provide time-slicing.  Only need to time slice 
-//      if we're currently running something (in other words, not idle).
-//	Also, to keep from looping forever, we check if there's
-//	nothing on the ready list, and there are no other pending
-//	interrupts.  In this case, we can safely halt.
-//----------------------------------------------------------------------
+private:
+  class SleepThread
+  {
+  public:
+    SleepThread(Thread *t, int wakeupTime);
+    Thread *sleepingThread;
+    int wakeupTime;
+  };
 
+  int currentTime;
+  std::list<SleepThread> threadList;
+};
+```
+
++ `/code/threads/alarm.cc`
+```cpp
 void 
 Alarm::CallBack() 
 {
@@ -54,18 +76,15 @@ Alarm::CallBack()
 
     bool woken = sleepList.checkWoken();
     
-    kernel->currentThread->setPriority(kernel->currentThread->getPriority() - 1);
     if (status == IdleMode && !woken && sleepList.empty()) {	// is it time to quit?
         if (!interrupt->AnyFutureInterrupts()) {
 	    timer->Disable();	// turn off the timer
 	}
     } else {			// there's someone to preempt
-	if(kernel->scheduler->getSchedulerType() == RR ||
-            kernel->scheduler->getSchedulerType() == Priority ) {
-		interrupt->YieldOnReturn();
-	}
+	interrupt->YieldOnReturn();
     }
 }
+
 
 //----------------------------------------------------------------------
 // Alarm::WaitUntil
@@ -89,6 +108,7 @@ Alarm::WaitUntil(int x)
     // Recover the interrupt Status
     kernel->interrupt->SetLevel(oldLevel);
 }
+
 
 // Constructor
 SleepList::SleepList()
@@ -150,3 +170,8 @@ SleepList::SleepThread::SleepThread(Thread *t, int wakeupTime)
     this->sleepingThread = t;
     this->wakeupTime = wakeupTime;
 }
+```
+
+
+### Screenshot [Link (gif)](https://i.imgur.com/6hrjgTh.gif)
+![img](https://i.imgur.com/6hrjgTh.gif)
