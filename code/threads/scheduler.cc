@@ -32,6 +32,10 @@ int PriorityCompare(Thread *a, Thread *b) {
     return a->getPriority() > b->getPriority() ? 1 : -1;
 }
 
+int FIFOCompare(Thread *a, Thread *b) {
+    return 1;
+}
+
 //----------------------------------------------------------------------
 // Scheduler::Scheduler
 // 	Initialize the list of ready but not running threads.
@@ -57,7 +61,7 @@ Scheduler::Scheduler(SchedulerType type)
 		readyList = new SortedList<Thread *>(PriorityCompare);
         	break;
     	case FIFO:
-		/* todo */
+		readyList = new SortedList<Thread *>(FIFOCompare);
 		break;
    	}
 	toBeDestroyed = NULL;
