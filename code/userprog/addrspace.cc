@@ -21,6 +21,10 @@
 #include "machine.h"
 #include "noff.h"
 
+// initial usedPhyPage to zero
+bool AddrSpace::usedPhyPage[NumPhysPages] = {0};
+
+
 //----------------------------------------------------------------------
 // SwapHeader
 // 	Do little endian to big endian conversion on the bytes in the 
@@ -51,9 +55,15 @@ SwapHeader (NoffHeader *noffH)
 //	only uniprogramming, and we have a single unsegmented page table
 //----------------------------------------------------------------------
 
+//----------------------------------------------------------------------
+// Because of the multiprogramming, the default pageTable don't care about
+// the phyPage have been used or not. We create the page table in 
+// Addrspace::Load()
+//----------------------------------------------------------------------
+
 AddrSpace::AddrSpace()
 {
-    pageTable = new TranslationEntry[NumPhysPages];
+/*  pageTable = new TranslationEntry[NumPhysPages];
     for (unsigned int i = 0; i < NumPhysPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virt page # = phys page #
 	pageTable[i].physicalPage = i;
@@ -66,16 +76,20 @@ AddrSpace::AddrSpace()
     }
     
     // zero out the entire address space
-//    bzero(kernel->machine->mainMemory, MemorySize);
+//    bzero(kernel->machine->mainMemory, MemorySize);*/
 }
+
+
 
 //----------------------------------------------------------------------
 // AddrSpace::~AddrSpace
-// 	Dealloate an address space.
+// 	Deallocate an address space and release the phyPage.
 //----------------------------------------------------------------------
 
 AddrSpace::~AddrSpace()
 {
+   for(int i = 0; i < numPages; i++)
+        AddrSpace::usedPhyPage[pageTable[i].physicalPage] = false;
    delete pageTable;
 }
 
@@ -113,6 +127,21 @@ AddrSpace::Load(char *fileName)
 						// to leave room for the stack
     numPages = divRoundUp(size, PageSize);
 //	cout << "number of pages of " << fileName<< " is "<<numPages<<endl;
+
+   // create pageTable and record usedPhyPage
+    pageTable = new TranslationEntry[numPages];
+    for(unsigned int i = 0, j = 0; i < numPages; i++) {
+        pageTable[i].virtualPage = i;
+        while(j < NumPhysPages && AddrSpace::usedPhyPage[j] == true)
+            j++;
+        AddrSpace::usedPhyPage[j] = true;
+        pageTable[i].physicalPage = j;
+        pageTable[i].valid = true;
+        pageTable[i].use = false;
+        pageTable[i].dirty = false;
+        pageTable[i].readOnly = false;
+    }
+
     size = numPages * PageSize;
 
     ASSERT(numPages <= NumPhysPages);		// check we're not trying
@@ -126,15 +155,17 @@ AddrSpace::Load(char *fileName)
 	if (noffH.code.size > 0) {
         DEBUG(dbgAddr, "Initializing code segment.");
 	DEBUG(dbgAddr, noffH.code.virtualAddr << ", " << noffH.code.size);
-        	executable->ReadAt(
-		&(kernel->machine->mainMemory[noffH.code.virtualAddr]), 
+	// read memory address in pageTable	
+        executable->ReadAt(
+		&(kernel->machine->mainMemory[pageTable[noffH.code.virtualAddr/PageSize].physicalPage * PageSize + (noffH.code.virtualAddr%PageSize)]), 
 			noffH.code.size, noffH.code.inFileAddr);
     }
 	if (noffH.initData.size > 0) {
         DEBUG(dbgAddr, "Initializing data segment.");
 	DEBUG(dbgAddr, noffH.initData.virtualAddr << ", " << noffH.initData.size);
+	// read memory address in pageTable 
         executable->ReadAt(
-		&(kernel->machine->mainMemory[noffH.initData.virtualAddr]),
+		&(kernel->machine->mainMemory[pageTable[noffH.initData.virtualAddr/PageSize].physicalPage * PageSize + (noffH.code.virtualAddr%PageSize)]),
 			noffH.initData.size, noffH.initData.inFileAddr);
     }
 
