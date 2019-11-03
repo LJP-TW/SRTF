@@ -160,6 +160,8 @@ Interrupt::OneTick()
     }
     DEBUG(dbgInt, "== Tick " << stats->totalTicks << " ==");
 
+    // Thread::currentTime++;
+    
 // check any pending interrupts are now ready to fire
     ChangeLevel(IntOn, IntOff);	// first, turn off interrupts
 				// (interrupt handlers run with

@@ -61,7 +61,8 @@ Alarm::CallBack()
 	}
     } else {			// there's someone to preempt
 	if(kernel->scheduler->getSchedulerType() == RR ||
-            kernel->scheduler->getSchedulerType() == Priority ) {
+            kernel->scheduler->getSchedulerType() == Priority ||
+            kernel->scheduler->getSchedulerType() == SRTF) {
 		interrupt->YieldOnReturn();
 	}
     }

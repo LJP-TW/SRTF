@@ -209,12 +209,37 @@ Thread::Yield ()
     ASSERT(this == kernel->currentThread);
     
     DEBUG(dbgThread, "Yielding thread: " << name);
-    
-    nextThread = kernel->scheduler->FindNextToRun();
-    if (nextThread != NULL) {
-	kernel->scheduler->ReadyToRun(this);
-	kernel->scheduler->Run(nextThread, FALSE);
+
+    if (kernel->scheduler->getSchedulerType() == SRTF)
+    {
+        nextThread = kernel->scheduler->GetNextToRun();
+        // while (nextThread->getArrivalTime() > Thread::currentTime)
+        // {
+        //     nextThread = nextThread->next;
+        // }
+        if (nextThread != NULL) 
+	    {
+            if (this->getBurstTime() < nextThread->getBurstTime())
+            {
+                nextThread = this;
+            }
+            if (nextThread != this) 
+            {
+                nextThread = kernel->scheduler->FindNextToRun();
+			    kernel->scheduler->ReadyToRun(this);                               
+			    kernel->scheduler->Run(nextThread, FALSE);
+            }
+        }
     }
+    else 
+    {
+        nextThread = kernel->scheduler->FindNextToRun();
+        if (nextThread != NULL) {
+	        kernel->scheduler->ReadyToRun(this);
+	        kernel->scheduler->Run(nextThread, FALSE);
+        }
+    }
+
     (void) kernel->interrupt->SetLevel(oldLevel);
 }
 
@@ -415,6 +440,7 @@ SimpleThread()
     Thread *thread = kernel->currentThread;
     while (thread->getBurstTime() > 0) {
         thread->setBurstTime(thread->getBurstTime() - 1);
+        Thread::currentTime++;
 	printf("%s: %d\n", kernel->currentThread->getName(), kernel->currentThread->getBurstTime());
         //kernel->currentThread->Yield();
 	kernel->interrupt->OneTick();
@@ -434,16 +460,26 @@ Thread::SelfTest()
     
     const int number 	 = 3;
     char *name[number] 	 = {"A", "B", "C"};
-    int burst[number] 	 = {3, 10, 4};
+    int burst[number] 	 = {1, 5, 1};
     int priority[number] = {4, 5, 3};
+    int arrival[number] = {0, 1, 3};
 
     Thread *t;
     for (int i = 0; i < number; i ++) {
         t = new Thread(name[i]);
         t->setPriority(priority[i]);
         t->setBurstTime(burst[i]);
+        t->setArrivalTime(burst[i]);
         t->Fork((VoidFunctionPtr) SimpleThread, (void *)NULL);
     }
+    kernel->scheduler->Print();
     kernel->currentThread->Yield();
 }
 
+//----------------------------------------------------------------------
+// Thread::currentTime
+// 	Set for SRTF Scheduler to determine thread is arrival or not.
+//----------------------------------------------------------------------
+
+int
+Thread::currentTime = 0;

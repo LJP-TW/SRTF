@@ -21,7 +21,8 @@ enum SchedulerType {
         RR,     // Round Robin
         SJF,
         Priority,
-	FIFO
+		FIFO,
+		SRTF
 };
 
 class Scheduler {
@@ -34,6 +35,8 @@ class Scheduler {
     					// Thread can be dispatched.
 	Thread* FindNextToRun();	// Dequeue first thread on the ready 
 					// list, if any, and return thread.
+	Thread* GetNextToRun();		
+						// Only get next thread on the ready list
 	void Run(Thread* nextThread, bool finishing);
 	    				// Cause nextThread to start running
 	void CheckToBeDestroyed();	// Check if thread that had been
