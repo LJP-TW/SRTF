@@ -141,7 +141,7 @@ Scheduler::FindNextToRun ()
 //----------------------------------------------------------------------
 
 Thread *
-Scheduler::GetNextToRun ()
+Scheduler::GetNextToRun (bool advance)
 {
     ASSERT(kernel->interrupt->getLevel() == IntOff);
 
@@ -154,28 +154,38 @@ Scheduler::GetNextToRun ()
         if (kernel->scheduler->getSchedulerType() == SRTF)
         {
             ListIterator<Thread *> *iter = new ListIterator<Thread *>(readyList);
-            // iter->Next();
-            cout << "-----------------Time:" << Thread::currentTime << "----------------"<< endl;
+            // iter->Next();
             cout << "GetNextTORun:" <<iter->Item()->getName() << endl;
+            Thread * smallest = iter->Item();
 
             while (iter->Item()->getArrivalTime() > Thread::currentTime)
             {
-                cout << "Compare Arrival Time" << endl;
+                cout << "Compare Arrival Time Thread :" << iter->Item()->getName() << " arrival at time:" << iter->Item()->getArrivalTime() << " vs time:" << Thread::currentTime << endl;
                 iter->Next();
                 if (iter->IsDone()) break;
+                if (iter->Item()->getArrivalTime() < smallest->getArrivalTime()) smallest = iter->Item();
             }
             if (!iter->IsDone())
             {
-                cout << "Remove Item and Prepend" << endl << endl;
                 Thread *t = iter->Item(); // Backup
                 readyList->Remove(iter->Item());
-                readyList->Prepend(t);
-                return readyList->Front();
+                cout << "Remove Item and Prepend: " << t->getName() << endl;
+                return t;
             }
             else
             {
-                cout << "404" << endl << endl;
-                return NULL;
+                cout << "404" << endl;
+                if (advance)
+                {
+                    cout << "-----------------Time:" << Thread::currentTime << "----------------"<< endl;
+                    Thread::currentTime = smallest->getArrivalTime();
+                    readyList->Remove(smallest);
+                    return smallest;
+                }
+                else
+                {
+                    return NULL;
+                }
             }
             
         }
@@ -285,4 +295,5 @@ Scheduler::Print()
 {
     cout << "Ready list contents:\n";
     readyList->Apply(ThreadPrint);
+    cout << "\n";
 }
